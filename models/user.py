@@ -1,7 +1,7 @@
 import sqlite3
 
 
-class ModelUser:
+class UserModel:
     db = 'data/data.db'
     table = 'users'
 

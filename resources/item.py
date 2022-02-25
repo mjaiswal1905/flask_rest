@@ -2,6 +2,8 @@ import sqlite3
 from flask_restful import Resource, reqparse
 from flask_jwt import jwt_required
 
+from models.item import ItemModel
+
 
 class Item(Resource):
     db = 'data/data.db'
@@ -11,27 +13,24 @@ class Item(Resource):
 
     @jwt_required()
     def get(self, name):
-        item = Item.find_by_name(name)
+        item = ItemModel.find_by_name(name)
         if item:
-            return {'Item': item}, 200
+            return item.json(), 200
         else:
             return {'message': 'Item not found'}, 404
 
     def post(self, name):
-        if Item.find_by_name(name):
+        if ItemModel.find_by_name(name):
             return {'message': f'An item with name {name} already exists'}, 400
 
         data = Item.parser.parse_args()
-        new_item = {
-            'name': name,
-            'price': data['price']
-        }
+        new_item = ItemModel(name, data['price'])
         try:
-            Item.insert(new_item)
+            new_item.insert()
         except:
             return {'message': 'Error during insert operation'}, 500
 
-        return new_item, 201
+        return new_item.json(), 201
 
     def delete(self, name):
         connection = sqlite3.connect(Item.db)
@@ -45,55 +44,22 @@ class Item(Resource):
 
     def put(self, name):
         data = Item.parser.parse_args()
-        item = Item.find_by_name(name)
-        updated_item = {'name': name, 'price': data['price']}
+
+        item = ItemModel.find_by_name(name)
+        updated_item = ItemModel(name, data['price'])
 
         if item is None:
             try:
-                Item.insert(updated_item)
+                updated_item.insert()
             except:
                 return {'message': 'Error during insert operation'}, 500
         else:
             try:
-                Item.update(data)
+                updated_item.update()
             except:
                 return {'message': 'Error during update operation'}, 500
 
-        return item
-
-    @classmethod
-    def find_by_name(cls, name):
-        connection = sqlite3.connect(Item.db)
-        cursor = connection.cursor()
-
-        query_select = f"SELECT * FROM {Item.table} where name=?"
-        cursor.execute(query_select, (name,))
-        row = cursor.fetchone()
-        connection.close()
-        if row:
-            return {'name': row[0], 'price': row[1]}
-        else:
-            return None
-
-    @classmethod
-    def insert(cls, item):
-        connection = sqlite3.connect(Item.db)
-        cursor = connection.cursor()
-
-        query_select = f"INSERT INTO {Item.table} VALUES (?, ?)"
-        cursor.execute(query_select, (item['name'], item['price']))
-        connection.commit()
-        connection.close()
-
-    @classmethod
-    def update(cls, item):
-        connection = sqlite3.connect(Item.db)
-        cursor = connection.cursor()
-
-        query_select = f"UPDATE {Item.table} SET price=? WHERE name=?"
-        cursor.execute(query_select, (item['price'], item['name']))
-        connection.commit()
-        connection.close()
+        return updated_item.json()
 
 
 class ItemList(Resource):
