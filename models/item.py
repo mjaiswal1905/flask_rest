@@ -1,9 +1,12 @@
-import sqlite3
+from db import db
 
 
-class ItemModel:
-    db = 'data/data.db'
-    table = 'items'
+class ItemModel(db.Model):
+    __tablename__ = 'items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80))
+    price = db.Column(db.Float(precision=2))
 
     def __init__(self, name, price):
         self.name = name
@@ -12,34 +15,14 @@ class ItemModel:
     def json(self):
         return {'name': self.name, 'price': self.price}
 
-    def insert(self):
-        connection = sqlite3.connect(ItemModel.db)
-        cursor = connection.cursor()
-
-        query_select = f"INSERT INTO {ItemModel.table} VALUES (?, ?)"
-        cursor.execute(query_select, (self.name, self.price))
-        connection.commit()
-        connection.close()
-
-    def update(self):
-        connection = sqlite3.connect(ItemModel.db)
-        cursor = connection.cursor()
-
-        query_select = f"UPDATE {ItemModel.table} SET price=? WHERE name=?"
-        cursor.execute(query_select, (self.price, self.name))
-        connection.commit()
-        connection.close()
-
     @classmethod
     def find_by_name(cls, name):
-        connection = sqlite3.connect(ItemModel.db)
-        cursor = connection.cursor()
+        return cls.query.filter_by(name=name).first()
 
-        query_select = f"SELECT * FROM {ItemModel.table} where name=?"
-        cursor.execute(query_select, (name,))
-        row = cursor.fetchone()
-        connection.close()
-        if row:
-            return cls(*row)
-        else:
-            return None
+    def save_to_db(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def delete_from_db(self):
+        db.session.delete(self)
+        db.session.commit()
